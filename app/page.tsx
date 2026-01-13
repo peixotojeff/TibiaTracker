@@ -1,3 +1,6 @@
+// src/app/page.tsx
+'use client'; // ←←← ADICIONE ESSA LINHA
+
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { XPLog } from '@/types';
