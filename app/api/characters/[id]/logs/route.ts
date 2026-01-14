@@ -9,34 +9,27 @@ export async function GET(
 ) {
   const supabase = createRouteHandlerClient({ cookies });
   
-  // Verifica se o usuário está logado
-  const { data: { user } } = await supabase.auth.getUser();
+  const {  { user } } = await supabase.auth.getUser();
   if (!user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Verifica se o personagem pertence ao usuário
-  const { data: char, error: charError } = await supabase
+  const {  char } = await supabase
     .from('characters')
     .select('id')
     .eq('id', params.id)
     .eq('user_id', user.id)
     .single();
 
-  if (charError || !char) {
+  if (!char) {
     return Response.json({ error: 'Character not found' }, { status: 404 });
   }
 
-  // Busca logs
-  const { data: logs, error: logsError } = await supabase
+  const {  logs } = await supabase
     .from('xp_logs')
     .select('*')
     .eq('character_id', params.id)
     .order('date', { ascending: false });
-
-  if (logsError) {
-    return Response.json({ error: 'Failed to load logs' }, { status: 500 });
-  }
 
   return Response.json({ logs });
 }
