@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthProvider';
+import { createSupabaseClient } from '@/lib/supabase';
 
 
 export default function LoginPage() {
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { signIn, signUp } = useAuth();
+  const supabase = createSupabaseClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

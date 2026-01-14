@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const initAuth = async () => {
-      const { data } = await supabaseClient.auth.getSession();
+      const { data } = await supabaseClient!.auth.getSession();
       const session = data?.session;
       setSession(session);
       setUser(session?.user ?? null);
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
 
     // ✅ CORREÇÃO: onAuthStateChange NÃO é async
-    const { subscription } = supabaseClient.auth.onAuthStateChange(
+    const { data: { subscription } } = supabaseClient!.auth.onAuthStateChange(
       (_event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);

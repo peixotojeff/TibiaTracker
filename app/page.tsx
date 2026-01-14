@@ -4,11 +4,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthProvider';
+import { createSupabaseClient } from '@/lib/supabase';
 import type { Character } from '@/types';
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const supabase = createSupabaseClient();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

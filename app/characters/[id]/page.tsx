@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthProvider';
+import { createSupabaseClient } from '@/lib/supabase';
 import type { Character, XPLog } from '@/types';
 
 export default function CharacterPage() {
@@ -21,6 +22,9 @@ export default function CharacterPage() {
     }
 
     const fetchData = async () => {
+      // Create Supabase client for browser
+      const supabase = createSupabaseClient();
+
       // Verifica se o personagem pertence ao usuário
       const { data: charData, error: charError } = await supabase
         .from('characters')

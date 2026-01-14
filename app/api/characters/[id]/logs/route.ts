@@ -5,11 +5,13 @@ import { NextRequest } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createRouteHandlerClient({ cookies });
+  const { id } = await params;
   
-  // ✅ CORREÇÃO AQUI
+  // Pass `cookies` as a function returning the cookies (cast to satisfy the expected sync type)
+  const supabase = createRouteHandlerClient({ cookies: () => cookies() as any });
+  
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,7 +20,7 @@ export async function GET(
   const { data: char, error: charError } = await supabase
     .from('characters')
     .select('id')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .single();
 
@@ -29,7 +31,7 @@ export async function GET(
   const { data: logs, error: logsError } = await supabase
     .from('xp_logs')
     .select('*')
-    .eq('character_id', params.id)
+    .eq('character_id', id)
     .order('date', { ascending: false });
 
   if (logsError) {
