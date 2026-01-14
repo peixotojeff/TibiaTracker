@@ -4,21 +4,16 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  // Só lança erro se estiver no browser (cliente)
-  if (typeof window !== 'undefined') {
-    throw new Error('Missing Supabase environment variables');
+// ✅ Exporta SEMPRE um cliente
+// Se as variáveis estiverem ausentes no client, lança erro
+if (typeof window !== 'undefined') {
+  // Estamos no navegador (client)
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Missing Supabase environment variables. Please check your .env.local file.'
+    );
   }
-  // No server, retorna um objeto falso (nunca usado)
-  const dummyClient = {
-    from: () => dummyClient,
-    select: () => dummyClient,
-    eq: () => dummyClient,
-    insert: () => dummyClient,
-    auth: { signInWithPassword: () => ({}), signUp: () => ({}) },
-  };
-  // @ts-ignore
-  export const supabase = dummyClient;
-} else {
-  export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 }
+
+// Cria o cliente (no server, as vars podem ser undefined, mas não usamos lá)
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
