@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseClient } from '@/lib/supabase';
 
 type AuthContextType = {
   user: any;
@@ -15,27 +15,27 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+let supabaseClient: ReturnType<typeof createSupabaseClient> | null = null;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!supabase) {
-      setLoading(false);
-      return;
+    // ✅ Cria o cliente SOMENTE no cliente
+    if (!supabaseClient) {
+      supabaseClient = createSupabaseClient();
     }
 
-    const getSession = async () => {
-      // ✅ CORREÇÃO AQUI
-      const { data } = await supabase.auth.getSession();
+    const initAuth = async () => {
+      const { data } = await supabaseClient.auth.getSession();
       const session = data?.session;
-
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
 
-      const { data: { subscription } } = await supabase.auth.onAuthStateChange(
+      const {  { subscription } } = await supabaseClient.auth.onAuthStateChange(
         (_event, newSession) => {
           setSession(newSession);
           setUser(newSession?.user ?? null);
@@ -47,24 +47,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     };
 
-    getSession();
+    initAuth();
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    if (!supabase) throw new Error('Supabase not initialized');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!supabaseClient) return;
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) throw error;
   };
 
   const signUp = async (email: string, password: string) => {
-    if (!supabase) throw new Error('Supabase not initialized');
-    const { error } = await supabase.auth.signUp({ email, password });
+    if (!supabaseClient) return;
+    const { error } = await supabaseClient.auth.signUp({ email, password });
     if (error) throw error;
   };
 
   const signOut = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
+    if (!supabaseClient) return;
+    await supabaseClient.auth.signOut();
   };
 
   const value = {
