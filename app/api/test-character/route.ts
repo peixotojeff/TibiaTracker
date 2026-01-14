@@ -9,20 +9,40 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Normaliza o mundo para o formato da API (ex: "Calmera" → "calmera")
+    // ✅ Mantém a vocação NO PLURAL (como "druids")
+    const vocationSlug = vocation.toLowerCase(); // ex: "druid" → "druid", mas seu select já envia "druids"
+    
+    // ✅ Mundo em minúsculo e sem espaços
     const worldSlug = world.trim().toLowerCase();
+    
     const nameNormalized = name.trim();
 
-    // Procura nas páginas 1 a 20
+    // Busca nas páginas 1 a 20
     for (let page = 1; page <= 20; page++) {
-      const url = `https://api.tibiadata.com/v4/highscores/${worldSlug}/experience/${vocation}/${page}`;
+      // ✅ Usa dev.tibiadata.com + vocação no plural
+      const url = `https://dev.tibiadata.com/v4/highscores/${worldSlug}/experience/${vocationSlug}/${page}`;
 
       try {
-        const res = await fetch(url, { timeout: 5000 });
-        if (!res.ok) continue;
+        const res = await fetch(url, { timeout: 8000 });
+        
+        // Aceita 200 ou 404 (404 = página inexistente, pula)
+        if (res.status === 404) {
+          console.log(`Page ${page} not found, stopping.`);
+          break; // páginas são sequenciais; se 404, não há mais
+        }
+        
+        if (!res.ok) {
+          console.warn(`Page ${page} returned ${res.status}`);
+          continue;
+        }
 
         const data = await res.json();
         const list = data.highscores?.highscore_list || [];
+
+        if (!Array.isArray(list)) {
+          console.warn(`Page ${page}: invalid format`);
+          continue;
+        }
 
         const found = list.find(
           (entry: any) => entry.name.toLowerCase() === nameNormalized.toLowerCase()
@@ -36,14 +56,17 @@ export async function POST(request: NextRequest) {
             page,
           });
         }
-      } catch (err) {
-        console.error(`Error on page ${page}:`, err);
+      } catch (err: any) {
+        console.error(`Error on page ${page}:`, err.message);
         continue;
       }
     }
 
-    return Response.json({ success: false, message: 'Character not found in pages 1-20' });
-  } catch (error) {
+    return Response.json({ 
+      success: false, 
+      message: 'Character not found in pages 1-20.' 
+    });
+  } catch (error: any) {
     console.error('Test character error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }

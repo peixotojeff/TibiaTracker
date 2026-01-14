@@ -1,51 +1,89 @@
 // scripts/fetch-xp-daily.mjs
 import { createClient } from '@supabase/supabase-js';
 
+// ⚠️ Use SERVICE_ROLE_KEY (não a ANON key!)
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // ← use a SERVICE ROLE KEY (tem acesso total)
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// scripts/fetch-xp-daily.mjs
-
-async function fetchXPForCharacter(character) {
-  const worldSlug = WORLD_MAP[character.world] || character.world.toLowerCase();
-  const url = `https://api.tibiadata.com/v4/highscores/${worldSlug}/experience/${character.vocation}/1`;
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.warn(`Failed to fetch ${character.name}: ${res.status}`);
-      return null;
-    }
-
-    const data = await res.json();
-    const list = data.highscores?.highscore_list || [];
-
-    const found = list.find(entry =>
-      entry.name.toLowerCase() === character.name.toLowerCase()
-    );
-
-    return found
-      ? { level: found.level, xp: found.value }
-      : null;
-  } catch (err) {
-    console.error(`Error fetching ${character.name}:`, err.message);
-    return null;
-  }
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment');
 }
 
-// ❗ ATUALIZADO: busca nas páginas 1 a 20
-async function run() {
-  const today = new Date().toISOString().split('T')[0]; // "2026-01-14"
+async function fetchXPFromTibiaData(character) {
+  const worldSlug = character.world.trim().toLowerCase();
+  const vocationSlug = character.vocation.toLowerCase(); // mantém plural!
+  const nameNormalized = character.name.trim().toLowerCase();
 
+  console.log(`🔍 Procurando ${character.name} (${worldSlug}, ${vocationSlug})...`);
+
+  for (let page = 1; page <= 20; page++) {
+    const url = `https://dev.tibiadata.com/v4/highscores/${worldSlug}/experience/${vocationSlug}/${page}`;
+
+    try {
+      const res = await fetch(url, { timeout: 8000 });
+      
+      if (res.status === 404) {
+        console.log(`🛑 Página ${page} não existe. Parando busca.`);
+        break;
+      }
+
+      if (!res.ok) {
+        console.warn(`⚠️ Página ${page} retornou ${res.status}. Continuando...`);
+        continue;
+      }
+
+      const data = await res.json();
+      const list = data?.highscores?.highscore_list;
+
+      if (!Array.isArray(list)) {
+        console.warn(`⚠️ Página ${page}: formato inválido.`);
+        continue;
+      }
+
+      const found = list.find(entry => 
+        entry?.name?.toLowerCase() === nameNormalized
+      );
+
+      if (found) {
+        console.log(`✅ Encontrado na página ${page}: Lvl ${found.level}, ${found.value} XP`);
+        return { level: found.level, xp: found.value };
+      }
+    } catch (err) {
+      console.error(`❌ Erro na página ${page}:`, err.message);
+      continue;
+    }
+  }
+
+  console.log(`❌ ${character.name} não encontrado nas páginas 1–20.`);
+  return null;
+}
+
+async function run() {
+  console.log('\n🚀 Iniciando coleta diária de XP...\n');
+
+  const today = new Date().toISOString().split('T')[0]; // "2026-01-15"
+
+  // Busca todos os personagens
   const { data: characters, error } = await supabase
     .from('characters')
     .select('id, name, world, vocation');
 
-  if (error) throw error;
+  if (error) {
+    console.error('❌ Falha ao buscar personagens:', error.message);
+    process.exit(1);
+  }
+
+  if (characters.length === 0) {
+    console.log('ℹ️ Nenhum personagem cadastrado.');
+    return;
+  }
+
+  console.log(`📊 Total de personagens: ${characters.length}`);
 
   for (const char of characters) {
+    // Verifica se já existe log hoje
     const {  existing } = await supabase
       .from('xp_logs')
       .select('id')
@@ -54,43 +92,15 @@ async function run() {
       .limit(1);
 
     if (existing.length > 0) {
-      console.log(`✅ Already logged for ${char.name} today`);
+      console.log(`⏭️ ${char.name} já registrado hoje. Pulando.`);
       continue;
     }
 
-    let stats = null;
+    // Busca XP atual
+    const stats = await fetchXPFromTibiaData(char);
+    if (!stats) continue;
 
-    // 🔍 Busca nas páginas 1 a 20
-    for (let page = 1; page <= 20; page++) {
-      const url = `https://api.tibiadata.com/v4/highscores/${worldSlug}/experience/${char.vocation}/${page}`;
-      
-      try {
-        const res = await fetch(url);
-        if (!res.ok) continue;
-
-        const data = await res.json();
-        const list = data.highscores?.highscore_list || [];
-
-        const found = list.find(entry =>
-          entry.name.toLowerCase() === char.name.toLowerCase()
-        );
-
-        if (found) {
-          stats = { level: found.level, xp: found.value };
-          console.log(`✅ Found ${char.name} on page ${page}`);
-          break; // Para ao encontrar
-        }
-      } catch (err) {
-        console.error(`Error on page ${page} for ${char.name}:`, err.message);
-        continue;
-      }
-    }
-
-    if (!stats) {
-      console.log(`❌ ${char.name} not found in pages 1-20`);
-      continue;
-    }
-
+    // Insere no banco
     const { error: insertError } = await supabase
       .from('xp_logs')
       .insert({
@@ -98,12 +108,21 @@ async function run() {
         date: today,
         level: stats.level,
         xp: stats.xp,
+        created_at: new Date().toISOString(),
       });
 
     if (insertError) {
-      console.error(`Failed to insert for ${char.name}:`, insertError.message);
+      console.error(`❌ Falha ao salvar ${char.name}:`, insertError.message);
     } else {
-      console.log(`✅ Logged ${char.name}: Lvl ${stats.level}, ${stats.xp} XP`);
+      console.log(`💾 Registrado com sucesso para ${char.name}`);
     }
   }
+
+  console.log('\n✅ Coleta diária concluída!');
 }
+
+// Executa o script
+run().catch((err) => {
+  console.error('💥 Erro crítico:', err);
+  process.exit(1);
+});

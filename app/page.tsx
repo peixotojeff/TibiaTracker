@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthProvider';
 import { supabase } from '@/lib/supabase';
-import type { Character, XPLog } from '@/types';
+import type { Character } from '@/types';
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth();
@@ -15,9 +15,13 @@ export default function HomePage() {
   const [showForm, setShowForm] = useState(false);
   const [newChar, setNewChar] = useState({
     name: '',
-    world: 'Calmera',
+    world: '',
     vocation: 'druid' as const,
   });
+
+  // ✅ Estados para o botão "Testar"
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, any>>({});
 
   // Redireciona se não estiver logado
   useEffect(() => {
@@ -50,20 +54,24 @@ export default function HomePage() {
 
   const handleAddCharacter = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !newChar.name.trim() || !newChar.world.trim()) {
+      alert('Preencha todos os campos.');
+      return;
+    }
 
     const { error } = await supabase.from('characters').insert({
       user_id: user.id,
       name: newChar.name.trim(),
-      world: newChar.world,
+      world: newChar.world.trim(),
       vocation: newChar.vocation,
       category: 'experience',
+      created_at: new Date().toISOString(), // ← evita erro de NOT NULL
     });
 
     if (error) {
       alert('Erro ao adicionar personagem: ' + error.message);
     } else {
-      setNewChar({ name: '', world: 'Calmera', vocation: 'druid' });
+      setNewChar({ name: '', world: '', vocation: 'druid' });
       setShowForm(false);
       // Recarrega a lista
       const { data } = await supabase
@@ -71,6 +79,33 @@ export default function HomePage() {
         .select('*')
         .eq('user_id', user.id);
       setCharacters(data || []);
+    }
+  };
+
+  const handleTestCharacter = async (char: Character) => {
+    setTestingId(char.id);
+    setTestResults((prev) => ({ ...prev, [char.id]: null }));
+
+    try {
+      const response = await fetch('/api/test-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: char.name,
+          world: char.world,
+          vocation: char.vocation,
+        }),
+      });
+
+      const result = await response.json();
+      setTestResults((prev) => ({ ...prev, [char.id]: result }));
+    } catch (err) {
+      setTestResults((prev) => ({
+        ...prev,
+        [char.id]: { success: false, message: 'Erro na conexão com a API' },
+      }));
+    } finally {
+      setTestingId(null);
     }
   };
 
@@ -99,13 +134,44 @@ export default function HomePage() {
             {characters.map((char) => (
               <li
                 key={char.id}
-                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
-                onClick={() => router.push(`/character/${char.id}`)}
+                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
               >
                 <div className="font-medium">{char.name}</div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 mb-2">
                   {char.vocation} • {char.world}
                 </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => router.push(`/character/${char.id}`)}
+                    className="text-blue-500 text-sm underline"
+                  >
+                    Ver histórico
+                  </button>
+                  <button
+                    onClick={() => handleTestCharacter(char)}
+                    disabled={testingId === char.id}
+                    className={`text-sm px-2 py-1 rounded ${
+                      testingId === char.id
+                        ? 'bg-gray-300 text-gray-500'
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    }`}
+                  >
+                    {testingId === char.id ? 'Testando...' : 'Testar'}
+                  </button>
+                </div>
+                {testResults[char.id] && (
+                  <div
+                    className={`mt-2 text-sm p-2 rounded ${
+                      testResults[char.id].success
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    {testResults[char.id].success
+                      ? `✅ Encontrado! Nível ${testResults[char.id].level}, ${testResults[char.id].xp.toLocaleString()} XP`
+                      : `❌ Não encontrado: ${testResults[char.id].message}`}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -129,30 +195,25 @@ export default function HomePage() {
             className="w-full p-2 border rounded mb-2"
             required
           />
-          <select
+          <input
+            type="text"
+            placeholder="Mundo (ex: Calmera, Antica...)"
             value={newChar.world}
             onChange={(e) => setNewChar({ ...newChar, world: e.target.value })}
             className="w-full p-2 border rounded mb-2"
-          >
-            <option value="Antica">Antica</option>
-            <option value="Calmera">Calmera</option>
-            <option value="Secura">Secura</option>
-            {/* Adicione outros mundos conforme necessário */}
-          </select>
+            required
+          />
           <select
             value={newChar.vocation}
             onChange={(e) => setNewChar({ ...newChar, vocation: e.target.value as any })}
             className="w-full p-2 border rounded mb-3"
           >
-            <option value="druid">Druid</option>
-            <option value="knight">Knight</option>
-            <option value="paladin">Paladin</option>
-            <option value="sorcerer">Sorcerer</option>
+            <option value="druids">Druid</option>
+            <option value="knights">Knight</option>
+            <option value="paladins">Paladin</option>
+            <option value="sorcerers">Sorcerer</option>
           </select>
-          <button
-            type="submit"
-            className="w-full bg-blue-500 text-white p-2 rounded"
-          >
+          <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded">
             Salvar Personagem
           </button>
         </form>
