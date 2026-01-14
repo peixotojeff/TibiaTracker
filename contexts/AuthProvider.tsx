@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '@/lib/supabase'; // pode ser null no server
+import { supabase } from '@/lib/supabase';
 
 type AuthContextType = {
   user: any;
@@ -21,19 +21,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Só roda no cliente
     if (!supabase) {
       setLoading(false);
       return;
     }
 
     const getSession = async () => {
-      const {  { session } } = await supabase.auth.getSession();
+      // ✅ CORREÇÃO AQUI
+      const { data } = await supabase.auth.getSession();
+      const session = data?.session;
+
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
 
-      const {  { subscription } } = await supabase.auth.onAuthStateChange(
+      const { data: { subscription } } = await supabase.auth.onAuthStateChange(
         (_event, newSession) => {
           setSession(newSession);
           setUser(newSession?.user ?? null);
