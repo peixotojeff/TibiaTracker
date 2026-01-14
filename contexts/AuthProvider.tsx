@@ -23,32 +23,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!supabaseClient) {
-      supabaseClient = createSupabaseClient();
+  if (!supabaseClient) {
+    supabaseClient = createSupabaseClient();
+  }
+
+  const initAuth = async () => {
+    const { data } = await supabaseClient!.auth.getSession();
+    const session = data?.session;
+    setSession(session);
+    setUser(session?.user ?? null);
+    setLoading(false);
+  };
+
+  initAuth();
+
+  // ✅ CORREÇÃO AQUI
+  const subscription = supabaseClient!.auth.onAuthStateChange(
+    (_event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
     }
+  );
 
-    const initAuth = async () => {
-      const { data } = await supabaseClient!.auth.getSession();
-      const session = data?.session;
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    };
-
-    initAuth();
-
-    // ✅ CORREÇÃO: onAuthStateChange NÃO é async
-    const { data: { subscription } } = supabaseClient!.auth.onAuthStateChange(
-      (_event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
 
   const signIn = async (email: string, password: string) => {
     if (!supabaseClient) return;
