@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthProvider';
-import { supabase } from '@/lib/supabase';
 import type { Character, XPLog } from '@/types';
 
 export default function CharacterPage() {

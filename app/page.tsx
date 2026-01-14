@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthProvider';
-import { supabase } from '@/lib/supabase';
 import type { Character } from '@/types';
 
 export default function HomePage() {

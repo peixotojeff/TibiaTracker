@@ -23,7 +23,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // ✅ Cria o cliente SOMENTE no cliente
     if (!supabaseClient) {
       supabaseClient = createSupabaseClient();
     }
@@ -34,20 +33,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-
-      const {  { subscription } } = await supabaseClient.auth.onAuthStateChange(
-        (_event, newSession) => {
-          setSession(newSession);
-          setUser(newSession?.user ?? null);
-        }
-      );
-
-      return () => {
-        subscription.unsubscribe();
-      };
     };
 
     initAuth();
+
+    // ✅ CORREÇÃO: onAuthStateChange NÃO é async
+    const { subscription } = supabaseClient.auth.onAuthStateChange(
+      (_event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
