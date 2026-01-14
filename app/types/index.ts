@@ -11,7 +11,7 @@ export type Character = {
 
 export type XPLog = {
   id: string;
-  character_id: string; // ← obrigatório
+  character_id: string; // ← NÃO tem character_name
   date: string;
   level: number;
   xp: number;
