@@ -186,7 +186,6 @@ export default function LoginPage() {
         {/* Footer */}
         <p className="text-center text-gray-500 text-sm mt-8">© 2026 Tibia Tracker. Todos os direitos reservados.</p>
       </div>
-      </div>
     </div>
   );
 }

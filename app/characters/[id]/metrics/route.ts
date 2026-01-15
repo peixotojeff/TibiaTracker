@@ -123,7 +123,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const supabase = createRouteHandlerClient({ cookies });
-  const {  { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
