@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import { AuthProvider } from '@/contexts/AuthProvider';
+import { Header } from '@/components/Header';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -22,9 +23,22 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={inter.className}>
         <AuthProvider>
-          {children}
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
         </AuthProvider>
       </body>
     </html>
+  );
+}
+
+function LayoutWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Header />
+      <main className="flex-1">
+        {children}
+      </main>
+    </div>
   );
 }

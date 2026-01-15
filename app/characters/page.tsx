@@ -46,23 +46,31 @@ export default function CharacterPage() {
   if (loading) return <div className="p-6">Carregando...</div>;
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <button onClick={() => router.back()} className="text-blue-500 mb-4">
-        ← Voltar
-      </button>
-      <h1 className="text-2xl font-bold mb-4">Histórico de XP</h1>
-      {logs.length === 0 ? (
-        <p>Nenhum registro encontrado.</p>
-      ) : (
-        <ul className="space-y-2">
-          {logs.map((log) => (
-            <li key={log.id} className="border p-3 rounded">
-              <div>Lvl {log.level} – {log.xp.toLocaleString()} XP</div>
-              <div className="text-sm text-gray-500">{log.date}</div>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="min-h-screen relative py-8" style={{
+      backgroundImage: 'url(/images/bg-adventure.png)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed',
+    }}>
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/85 via-gray-800/85 to-gray-900/90"></div>
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <button onClick={() => router.back()} className="text-blue-400 hover:text-blue-300 mb-6 flex items-center gap-2 transition font-medium">
+          ← Voltar
+        </button>
+        <h1 className="text-3xl font-bold mb-8 text-white">Meus Personagens</h1>
+        {logs.length === 0 ? (
+          <p>Nenhum registro encontrado.</p>
+        ) : (
+          <ul className="space-y-2">
+            {logs.map((log) => (
+              <li key={log.id} className="border p-3 rounded">
+                <div>Lvl {log.level} – {log.xp.toLocaleString()} XP</div>
+                <div className="text-sm text-gray-500">{log.date}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

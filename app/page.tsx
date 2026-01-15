@@ -116,13 +116,12 @@ export default function HomePage() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Tibia Tracker</h1>
+      <div className="mb-6">
         <button
-          onClick={() => supabase.auth.signOut()}
-          className="text-red-500 text-sm"
+          onClick={() => router.push('/dashboard')}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
         >
-          Sair
+          Ir para Dashboard
         </button>
       </div>
 
@@ -218,7 +217,25 @@ export default function HomePage() {
             Salvar Personagem
           </button>
         </form>
+        
       )}
+          <div className="flex justify-between items-center mb-6">
+      <h1 className="text-2xl font-bold">Tibia Tracker</h1>
+      <div className="flex gap-4">
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="text-blue-500 hover:underline"
+        >
+          Dashboard
+        </button>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="text-red-500"
+        >
+          Sair
+        </button>
+      </div>
+    </div>
     </div>
   );
 }

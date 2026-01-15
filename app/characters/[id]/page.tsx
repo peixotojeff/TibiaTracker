@@ -4,15 +4,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthProvider';
-import { createSupabaseClient } from '@/lib/supabase';
-import type { Character, XPLog } from '@/types';
+import type { Character } from '@/types';
+import { CharacterDashboard } from '@/components/CharacterDashboard';
 
 export default function CharacterPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [character, setCharacter] = useState<Character | null>(null);
-  const [logs, setLogs] = useState<XPLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,67 +20,84 @@ export default function CharacterPage() {
       return;
     }
 
-    const fetchData = async () => {
-      // Create Supabase client for browser
-      const supabase = createSupabaseClient();
+    if (user && id) {
+      const fetchCharacter = async () => {
+        try {
+          const res = await fetch(`/api/characters/${id}`);
+          if (res.ok) {
+            const data = await res.json();
+            setCharacter(data);
+          } else {
+            alert('Erro ao carregar personagem');
+            router.push('/');
+          }
+        } catch (error) {
+          console.error('Erro:', error);
+          router.push('/');
+        } finally {
+          setLoading(false);
+        }
+      };
 
-      // Verifica se o personagem pertence ao usuário
-      const { data: charData, error: charError } = await supabase
-        .from('characters')
-        .select('*')
-        .eq('id', id)
-        .eq('user_id', user?.id)
-        .single();
-
-      if (charError || !charData) {
-        alert('Personagem não encontrado ou acesso negado.');
-        router.push('/');
-        return;
-      }
-
-      setCharacter(charData);
-
-      // Carrega logs
-      const { data: logsData } = await supabase
-        .from('xp_logs')
-        .select('*')
-        .eq('character_id', id)
-        .order('date', { ascending: false });
-
-      setLogs(logsData || []);
-      setLoading(false);
-    };
-
-    fetchData();
+      fetchCharacter();
+    }
   }, [id, user, authLoading, router]);
 
-  if (loading || !character) {
-    return <div className="p-6">Carregando...</div>;
+  if (loading) {
+    return (
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-700 rounded mb-4 w-1/4"></div>
+            <div className="h-96 bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!character) {
+    return (
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-gray-400">Personagem não encontrado</p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="mt-4 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded hover:from-blue-700 hover:to-purple-700 transition"
+          >
+            Voltar ao Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <button onClick={() => router.back()} className="text-blue-500 mb-4">
-        ← Voltar
-      </button>
-      <h1 className="text-2xl font-bold mb-2">{character.name}</h1>
-      <p className="text-gray-600 mb-6">
-        {character.vocation} • {character.world}
-      </p>
+    <div className="min-h-screen relative py-8" style={{
+      backgroundImage: 'url(/images/bg-dungeon.png)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed',
+    }}>
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/85 via-gray-800/85 to-gray-900/90"></div>
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="mb-4 px-4 py-2 text-gray-300 hover:text-white font-medium flex items-center gap-2 transition"
+          >
+            ← Voltar ao Dashboard
+          </button>
+          <h1 className="text-4xl font-bold text-white">{character.name}</h1>
+          <p className="text-lg text-gray-300 mt-1">
+            {character.vocation.toUpperCase()} • {character.world}
+          </p>
+        </div>
 
-      <h2 className="text-xl font-semibold mb-3">Histórico de XP</h2>
-      {logs.length === 0 ? (
-        <p className="text-gray-500">Nenhum log registrado ainda.</p>
-      ) : (
-        <ul className="space-y-2">
-          {logs.map((log) => (
-            <li key={log.id} className="border p-3 rounded">
-              <div>Lvl {log.level} – {log.xp.toLocaleString()} XP</div>
-              <div className="text-sm text-gray-500">{log.date}</div>
-            </li>
-          ))}
-        </ul>
-      )}
+        {/* Dashboard com Gráficos */}
+        <CharacterDashboard character={character} />
+      </div>
     </div>
   );
 }
