@@ -122,7 +122,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = createRouteHandlerClient({ cookies: async () => await cookies() });
+  const cookieStore = await cookies();
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -130,7 +131,7 @@ export async function GET(
   }
 
   // Verifica se o personagem pertence ao usuário
-  const {  char } = await supabase
+  const { data: char } = await supabase
     .from('characters')
     .select('id')
     .eq('id', id)
@@ -142,7 +143,7 @@ export async function GET(
   }
 
   // Busca logs
-  const {  logs } = await supabase
+  const { data: logs } = await supabase
     .from('xp_logs')
     .select('date, xp')
     .eq('character_id', id)
