@@ -1,87 +1,44 @@
+// src/app/statistics/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthProvider';
 import { useRouter } from 'next/navigation';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-import type { Character } from '@/types';
-
-interface CharacterStats {
-  name: string;
-  level: number;
-  totalXP: number;
-  dailyAverage: number;
-  daysTracked: number;
-}
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function StatisticsPage() {
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [stats, setStats] = useState<CharacterStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-      return;
-    }
+    const checkAuth = async () => {
+      const supabase = createClientComponentClient();
+      const { data } = await supabase.auth.getUser();
+      
+      if (!data.user) {
+        router.push('/login');
+      } else {
+        setUser(data.user);
+      }
+      setLoading(false);
+    };
 
-    if (user) {
-      const fetchData = async () => {
-        try {
-          const res = await fetch('/api/characters');
-          if (res.ok) {
-            const data = await res.json();
-            setCharacters(data);
+    checkAuth();
+  }, [router]);
 
-            // Calcular estatísticas para cada personagem
-            const characterStats: CharacterStats[] = [];
-            for (const character of data) {
-              const statsRes = await fetch(
-                `/api/characters/${character.id}/stats`
-              );
-              if (statsRes.ok) {
-                const statsData = await statsRes.json();
-                characterStats.push({
-                  name: character.name,
-                  level: statsData.level_real || 0,
-                  totalXP: statsData.xp_total || 0,
-                  dailyAverage: statsData.media_recente || 0,
-                  daysTracked: statsData.dias_rastreados || 0,
-                });
-              }
-            }
-            setStats(characterStats);
-          }
-        } catch (error) {
-          console.error('Erro ao buscar estatísticas:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
+  if (loading) {
+    return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">Carregando...</div>;
+  }
 
-      fetchData();
-    }
-  }, [user, authLoading, router]);
+  if (!user) return null;
 
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-4xl font-bold text-white">Estatísticas</h1>
+          </div>
           <div className="bg-gray-800 rounded-lg p-8 h-96 animate-pulse"></div>
         </div>
       </div>
@@ -113,12 +70,25 @@ export default function StatisticsPage() {
     }}>
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/85 via-gray-800/85 to-gray-900/90"></div>
       <div className="relative max-w-6xl mx-auto">
-        {/* Cabeçalho */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Estatísticas</h1>
-          <p className="text-gray-400">
-            Visualize as estatísticas dos seus personagens
-          </p>
+        {/* Cabeçalho com botão */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">Estatísticas</h1>
+            <p className="text-gray-400">
+              Visualize as estatísticas dos seus personagens
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className={`px-4 py-2 rounded-lg font-medium transition ${
+              loading
+                ? 'bg-gray-600 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+            } text-white shadow-md`}
+          >
+            {loading ? 'Atualizando...' : '🔄 Atualizar Dados'}
+          </button>
         </div>
 
         {/* Resumo Geral */}

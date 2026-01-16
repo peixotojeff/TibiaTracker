@@ -64,9 +64,13 @@ async function fetchXPFromTibiaData(character) {
       );
 
       if (found) {
-        console.log(`✅ Encontrado na página ${page}: Lvl ${found.level}, ${found.value} XP`);
-        return { level: found.level, xp: found.value };
-      }
+          console.log(`✅ Encontrado na página ${page}: Lvl ${found.level}, ${found.value} XP, Rank ${found.rank}`);
+          return {
+            level: found.level,
+            xp: found.value,
+            vocation_rank: found.rank // 👈 adicione esta linha
+          };
+        }
     } catch (err) {
       console.error(`❌ Erro na página ${page}:`, err.message);
       continue;
@@ -127,10 +131,11 @@ async function run() {
     .from('xp_logs')
     .insert({
       character_id: char.id,
-      user_id: char.user_id,        // ← obrigatório
+      user_id: char.user_id,       
       date: today,
       level: stats.level,
       xp: stats.xp,
+      vocation_rank: stats.vocation_rank,
     });
 
     if (insertError) {
