@@ -1,19 +1,32 @@
 // scripts/fetch-xp-daily.mjs
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
 
-// ⚠️ Use SERVICE_ROLE_KEY (não a ANON key!)
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabaseUrl = process.env.SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment');
+if (!supabaseUrl) {
+  console.error('Missing SUPABASE_URL environment variable')
+  process.exit(1)
+}
+if (!supabaseKey) {
+  console.error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
+  process.exit(1)
 }
 
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+
 async function fetchXPFromTibiaData(character) {
+
+  const vocationMap = {
+  druid: 'druids',
+  knight: 'knights',
+  paladin: 'paladins',
+  sorcerer: 'sorcerers'
+};
+
   const worldSlug = character.world.trim().toLowerCase();
-  const vocationSlug = character.vocation.toLowerCase(); // mantém plural!
+  const vocationSlug = (vocationMap[character.vocation.toLowerCase()] || character.vocation).toLowerCase();
   const nameNormalized = character.name.trim().toLowerCase();
 
   console.log(`🔍 Procurando ${character.name} (${worldSlug}, ${vocationSlug})...`);
@@ -71,8 +84,8 @@ async function run() {
 
   // Busca todos os personagens
   const { data: characters, error } = await supabase
-    .from('characters')
-    .select('id, name, world, vocation');
+  .from('characters')
+  .select('id, name, world, vocation, user_id');
 
   if (error) {
     console.error('❌ Falha ao buscar personagens:', error.message);
@@ -111,14 +124,14 @@ async function run() {
 
     // Insere no banco
     const { error: insertError } = await supabase
-      .from('xp_logs')
-      .insert({
-        character_id: char.id,
-        date: today,
-        level: stats.level,
-        xp: stats.xp,
-        created_at: new Date().toISOString(),
-      });
+    .from('xp_logs')
+    .insert({
+      character_id: char.id,
+      user_id: char.user_id,        // ← obrigatório
+      date: today,
+      level: stats.level,
+      xp: stats.xp,
+    });
 
     if (insertError) {
       console.error(`❌ Falha ao salvar ${char.name}:`, insertError.message);
