@@ -219,23 +219,6 @@ export default function HomePage() {
         </form>
         
       )}
-          <div className="flex justify-between items-center mb-6">
-      <h1 className="text-2xl font-bold">Tibia Tracker</h1>
-      <div className="flex gap-4">
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="text-blue-500 hover:underline"
-        >
-          Dashboard
-        </button>
-        <button
-          onClick={() => supabase.auth.signOut()}
-          className="text-red-500"
-        >
-          Sair
-        </button>
-      </div>
-    </div>
     </div>
   );
 }

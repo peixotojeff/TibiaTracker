@@ -88,17 +88,22 @@ async function run() {
 
   for (const char of characters) {
     // Verifica se já existe log hoje
-    const {  existing } = await supabase
-      .from('xp_logs')
-      .select('id')
-      .eq('character_id', char.id)
-      .eq('date', today)
-      .limit(1);
+    const { data: existing, error: checkError } = await supabase
+        .from('xp_logs')
+        .select('id')
+        .eq('character_id', char.id)
+        .eq('date', today)
+        .maybeSingle();   // ou .limit(1).single() se tiver certeza que é no máximo 1
 
-    if (existing.length > 0) {
-      console.log(`⏭️ ${char.name} já registrado hoje. Pulando.`);
-      continue;
-    }
+      if (checkError) {
+        console.error(`Erro ao verificar ${char.name}:`, checkError.message);
+        continue;
+      }
+
+      if (existing) {
+        console.log(`⏭️ ${char.name} já registrado hoje. Pulando.`);
+        continue;
+      }
 
     // Busca XP atual
     const stats = await fetchXPFromTibiaData(char);

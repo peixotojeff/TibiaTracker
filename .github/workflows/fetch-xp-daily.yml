@@ -1,0 +1,31 @@
+name: Fetch XP Daily
+
+on:
+  schedule:
+    # Executa diariamente às 00:00 UTC (ajuste conforme necessário)
+    - cron: '0 0 * * *'
+  # Permite disparo manual
+  workflow_dispatch:
+
+jobs:
+  fetch-xp:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch XP from Tibia Data
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/fetch-xp-daily.mjs
