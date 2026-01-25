@@ -37,7 +37,7 @@ export default function LogsPage() {
       if (dataRes.ok) {
         const data = await dataRes.json();
         setCharacter(data.character);
-        setLogs(data.logs || []);
+        setLogs((data.logs || []).sort((a: XPLog, b: XPLog) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       } else {
         console.error('Erro ao buscar dados combinados');
       }
@@ -126,8 +126,8 @@ export default function LogsPage() {
                 </thead>
                 <tbody>
                   {logs.map((log, idx) => {
-                    const prevLog = idx > 0 ? logs[idx - 1] : null;
-                    const xpGained = prevLog ? log.xp - prevLog.xp : 0;
+                    const nextLog = idx < logs.length - 1 ? logs[idx + 1] : null;
+                    const xpGained = nextLog ? log.xp - nextLog.xp : 0;
 
                     return (
                       <tr
@@ -142,7 +142,7 @@ export default function LogsPage() {
                           {log.xp.toLocaleString()}
                         </td>
                         <td className="px-4 py-3">
-                          {idx === 0 ? (
+                          {idx === logs.length - 1 ? (
                             <span className="text-gray-500">-</span>
                           ) : (
                             <span className={`font-medium ${
@@ -171,13 +171,13 @@ export default function LogsPage() {
             <div className="bg-gradient-to-br from-green-900/40 to-green-800/40 border border-green-700 rounded-lg p-6">
               <p className="text-green-200 text-sm mb-1">Nível Atual</p>
               <p className="text-3xl font-bold text-white">
-                {logs[logs.length - 1]?.level || 0}
+                {logs[0]?.level || 0}
               </p>
             </div>
             <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/40 border border-purple-700 rounded-lg p-6">
               <p className="text-purple-200 text-sm mb-1">XP Total</p>
               <p className="text-3xl font-bold text-white">
-                {logs[logs.length - 1]?.xp.toLocaleString() || 0}
+                {logs[0]?.xp.toLocaleString() || 0}
               </p>
             </div>
           </div>

@@ -37,6 +37,28 @@ export default function DashboardPage() {
   const router = useRouter();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'level' | 'xp'>('name');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [allMetrics, setAllMetrics] = useState<Record<string, CharacterMetrics>>({});
+
+  // Filter and sort characters
+  const filteredAndSortedCharacters = characters
+    .filter(char => char.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      } else if (sortBy === 'level') {
+        const aLevel = allMetrics[a.id]?.level_real || 0;
+        const bLevel = allMetrics[b.id]?.level_real || 0;
+        return bLevel - aLevel; // Higher level first
+      } else if (sortBy === 'xp') {
+        const aXP = allMetrics[a.id]?.media_recente || 0;
+        const bXP = allMetrics[b.id]?.media_recente || 0;
+        return bXP - aXP; // Higher XP first
+      }
+      return 0;
+    });
 
   const handleDeleteCharacter = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este personagem?')) return;
@@ -69,6 +91,25 @@ export default function DashboardPage() {
         if (res.ok) {
           const data = await res.json();
           setCharacters(data);
+
+          // Fetch metrics for all characters
+          const metricsPromises = data.map(async (char: Character) => {
+            const metricsRes = await fetch(`/api/characters/${char.id}/metrics`);
+            if (metricsRes.ok) {
+              const metricsData = await metricsRes.json();
+              return { id: char.id, metrics: metricsData };
+            }
+            return null;
+          });
+
+          const metricsResults = await Promise.all(metricsPromises);
+          const metricsMap: Record<string, CharacterMetrics> = {};
+          metricsResults.forEach(result => {
+            if (result) {
+              metricsMap[result.id] = result.metrics;
+            }
+          });
+          setAllMetrics(metricsMap);
         }
         setLoading(false);
       };
@@ -101,6 +142,58 @@ export default function DashboardPage() {
     }}>
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/85 via-gray-800/85 to-gray-900/90"></div>
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Controls */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Buscar personagem..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+              />
+              <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            {/* Sort */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'level' | 'xp')}
+              className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="name">Ordenar por Nome</option>
+              <option value="level">Ordenar por Nível</option>
+              <option value="xp">Ordenar por XP/Dia</option>
+            </select>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+              title="Visualização em Grade"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+              title="Visualização em Lista"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
         {characters.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-xl text-gray-400 mb-4">Nenhum personagem cadastrado.</p>
@@ -112,9 +205,9 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {characters.map((char) => (
-              <CharacterCard key={char.id} character={char} onDelete={handleDeleteCharacter} />
+          <div className={viewMode === 'grid' ? "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6" : "space-y-4"}>
+            {filteredAndSortedCharacters.map((char) => (
+              <CharacterCard key={char.id} character={char} onDelete={handleDeleteCharacter} viewMode={viewMode} />
             ))}
           </div>
         )}
@@ -123,7 +216,7 @@ export default function DashboardPage() {
   );
 }
 
-function CharacterCard({ character, onDelete }: { character: Character; onDelete: (id: string) => void }) {
+function CharacterCard({ character, onDelete, viewMode }: { character: Character; onDelete: (id: string) => void; viewMode: 'grid' | 'list' }) {
   const router = useRouter();
   const [metrics, setMetrics] = useState<CharacterMetrics | null>(null);
   const [chartData, setChartData] = useState<XPData[]>([]);
@@ -181,6 +274,76 @@ function CharacterCard({ character, onDelete }: { character: Character; onDelete
       date: new Date(chartData[i].date).toLocaleDateString('pt-BR', { day: '2-digit' }),
       xp: dailyGain > 0 ? dailyGain : 0,
     });
+  }
+
+  if (viewMode === 'list') {
+    return (
+      <div
+        className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-blue-600 cursor-pointer transition-all hover:shadow-xl hover:shadow-blue-500/20"
+        onClick={() => router.push(`/logs?characterId=${character.id}`)}
+      >
+        <div className="flex items-center p-4">
+          {/* Character Info */}
+          <div className="flex-1">
+            <div className="flex items-center gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-white">{character.name}</h3>
+                <p className="text-gray-400 text-sm">
+                  {character.vocation.toUpperCase()} • {character.world}
+                </p>
+              </div>
+              {metrics && (
+                <div className="flex gap-6">
+                  <div className="text-center">
+                    <p className="text-xs text-blue-300">Nível</p>
+                    <p className="text-lg font-bold text-blue-400">{metrics.level_real}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-green-300">XP/Dia</p>
+                    <p className="text-lg font-bold text-green-400">
+                      {Math.round(metrics.media_recente).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-400">Próximo nível</p>
+                    <p className="text-sm font-semibold text-gray-200">{metrics.eta_str}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-400">Streak</p>
+                    <p
+                      className={`font-semibold text-sm ${
+                        metrics.cor_delta === 'success' ? 'text-green-400' : 'text-red-400'
+                      }`}
+                    >
+                      {metrics.streak_count}d
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(character.id);
+              }}
+              className="text-red-300 hover:text-red-100 transition p-2"
+              title="Excluir personagem"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+            <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition">
+              Ver Detalhes
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
