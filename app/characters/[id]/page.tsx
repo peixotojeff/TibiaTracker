@@ -95,6 +95,13 @@ export default function CharacterPage() {
           </p>
         </div>
 
+        {/* Aviso sobre coleta de dados */}
+        <div className="mb-6 p-4 bg-yellow-900/50 border border-yellow-600 rounded-lg">
+          <p className="text-yellow-200 text-sm">
+            <strong>Aviso:</strong> Não coletamos dados históricos anteriores ao cadastro do personagem. Apenas informações a partir do momento de registro são exibidas.
+          </p>
+        </div>
+
         {/* Dashboard com Gráficos */}
         <CharacterDashboard character={character} />
       </div>
