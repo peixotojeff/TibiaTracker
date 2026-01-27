@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     const capitalizedWorld = world.charAt(0).toUpperCase() + world.slice(1).toLowerCase();
-    const capitalizedVocation = vocation.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+    const capitalizedVocation = vocation.split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
 
     const { data, error } = await supabase
       .from('characters')
