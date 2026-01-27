@@ -1,27 +1,16 @@
 // src/components/Header.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useAuth } from '@/contexts/AuthProvider';
 
 export function Header() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const { user, loading } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  // Verifica a sessão ao montar o componente
-  useEffect(() => {
-    const checkSession = async () => {
-      const supabase = createClientComponentClient();
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user);
-      setLoading(false);
-    };
-    checkSession();
-  }, []);
 
   const handleLogout = async () => {
     const supabase = createClientComponentClient();
@@ -68,6 +57,12 @@ export function Header() {
                 className="text-gray-300 hover:text-white transition duration-200 text-sm font-medium"
               >
                 Personagens
+              </Link>
+              <Link
+                href="/rankings"
+                className="text-gray-300 hover:text-white transition duration-200 text-sm font-medium"
+              >
+                Rankings
               </Link>
               <Link
                 href="/statistics"

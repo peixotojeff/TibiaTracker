@@ -1,221 +1,110 @@
-// src/app/characters/page.tsx
+// src/app/character/[id]/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthProvider';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import type { Character } from '@/types';
+import { CharacterDashboard } from '@/components/CharacterDashboard';
 
-export default function CharactersPage() {
-  const { user, loading: authLoading } = useAuth();
+export default function CharacterPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const supabase = createClientComponentClient(); // ✅ Cliente correto
-  const [characters, setCharacters] = useState<Character[]>([]);
+  const { user, loading: authLoading } = useAuth();
+  const [character, setCharacter] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [newChar, setNewChar] = useState({
-    name: '',
-    world: '',
-    vocation: 'druids' as const, // ✅ Valor deve corresponder ao banco
-  });
 
-  const [testingId, setTestingId] = useState<string | null>(null);
-  const [testResults, setTestResults] = useState<Record<string, any>>({});
-
-  // Redireciona se não estiver logado
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
-
-  // Carrega personagens do usuário
-  useEffect(() => {
-    if (user) {
-      const fetchCharacters = async () => {
-        const { data, error } = await supabase
-          .from('characters')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('name', { ascending: true });
-
-        if (error) {
-          console.error('Erro ao carregar personagens:', error);
-        } else {
-          setCharacters(data || []);
-        }
-        setLoading(false);
-      };
-
-      fetchCharacters();
-    }
-  }, [user, supabase]);
-
-  const handleAddCharacter = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !newChar.name.trim() || !newChar.world.trim()) {
-      alert('Preencha todos os campos.');
+    if (!authLoading && (!user || !id)) {
+      router.push('/');
       return;
     }
 
-    const { error } = await supabase.from('characters').insert({
-      user_id: user.id,
-      name: newChar.name.trim(),
-      world: newChar.world.trim(),
-      vocation: newChar.vocation,
-      category: 'experience',
-    });
+    if (user && id) {
+      const fetchCharacter = async () => {
+        try {
+          const res = await fetch(`/api/characters/${id}`);
+          if (res.ok) {
+            const data = await res.json();
+            setCharacter(data);
+          } else {
+            alert('Erro ao carregar personagem');
+            router.push('/');
+          }
+        } catch (error) {
+          console.error('Erro:', error);
+          router.push('/');
+        } finally {
+          setLoading(false);
+        }
+      };
 
-    if (error) {
-      alert('Erro ao adicionar personagem: ' + error.message);
-    } else {
-      setNewChar({ name: '', world: '', vocation: 'druids' });
-      setShowForm(false);
-      // Recarrega a lista
-      const { data } = await supabase
-        .from('characters')
-        .select('*')
-        .eq('user_id', user.id);
-      setCharacters(data || []);
+      fetchCharacter();
     }
-  };
+  }, [id, user, authLoading, router]);
 
-  const handleTestCharacter = async (char: Character) => {
-    setTestingId(char.id);
-    setTestResults((prev) => ({ ...prev, [char.id]: null }));
+  if (loading) {
+    return (
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-700 rounded mb-4 w-1/4"></div>
+            <div className="h-96 bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-    try {
-      const response = await fetch('/api/test-character', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: char.name,
-          world: char.world,
-          vocation: char.vocation,
-        }),
-      });
-
-      const result = await response.json();
-      setTestResults((prev) => ({ ...prev, [char.id]: result }));
-    } catch (err) {
-      setTestResults((prev) => ({
-        ...prev,
-        [char.id]: { success: false, message: 'Erro na conexão com a API' },
-      }));
-    } finally {
-      setTestingId(null);
-    }
-  };
-
-  if (authLoading || loading) {
-    return <div className="p-6">Carregando...</div>;
+  if (!character) {
+    return (
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-gray-400">Personagem não encontrado</p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="mt-4 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded hover:from-blue-700 hover:to-purple-700 transition"
+          >
+            Voltar ao Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
-        >
-          Ir para Dashboard
-        </button>
-      </div>
-
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-3">Meus Personagens</h2>
-        {characters.length === 0 ? (
-          <p className="text-gray-500">Nenhum personagem cadastrado.</p>
-        ) : (
-          <ul className="space-y-3">
-            {characters.map((char) => (
-              <li
-                key={char.id}
-                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
-              >
-                <div className="font-medium">{char.name}</div>
-                <div className="text-sm text-gray-600 mb-2">
-                  {char.vocation} • {char.world}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => router.push(`/character/${char.id}`)}
-                    className="text-blue-500 text-sm underline"
-                  >
-                    Ver histórico
-                  </button>
-                  <button
-                    onClick={() => handleTestCharacter(char)}
-                    disabled={testingId === char.id}
-                    className={`text-sm px-2 py-1 rounded ${
-                      testingId === char.id
-                        ? 'bg-gray-300 text-gray-500'
-                        : 'bg-green-100 text-green-700 hover:bg-green-200'
-                    }`}
-                  >
-                    {testingId === char.id ? 'Testando...' : 'Testar'}
-                  </button>
-                </div>
-                {testResults[char.id] && (
-                  <div
-                    className={`mt-2 text-sm p-2 rounded ${
-                      testResults[char.id].success
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {testResults[char.id].success
-                      ? `✅ Encontrado! Nível ${testResults[char.id].level}, ${testResults[char.id].xp.toLocaleString()} XP`
-                      : `❌ Não encontrado: ${testResults[char.id].message}`
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <button
-        onClick={() => setShowForm(!showForm)}
-        className="text-blue-500 underline mb-4"
-      >
-        {showForm ? 'Cancelar' : 'Adicionar novo personagem'}
-      </button>
-
-      {showForm && (
-        <form onSubmit={handleAddCharacter} className="bg-gray-50 p-4 rounded-lg">
-          <input
-            type="text"
-            placeholder="Nome do personagem"
-            value={newChar.name}
-            onChange={(e) => setNewChar({ ...newChar, name: e.target.value })}
-            className="w-full p-2 border rounded mb-2"
-            required
-          />
-          <input
-            type="text"
-            placeholder="Mundo (ex: Calmera, Antica...)"
-            value={newChar.world}
-            onChange={(e) => setNewChar({ ...newChar, world: e.target.value })}
-            className="w-full p-2 border rounded mb-2"
-            required
-          />
-          <select
-            value={newChar.vocation}
-            onChange={(e) => setNewChar({ ...newChar, vocation: e.target.value as any })}
-            className="w-full p-2 border rounded mb-3"
+    <div className="min-h-screen relative py-8" style={{
+      backgroundImage: 'url(/images/bg-dungeon.png)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed',
+    }}>
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/85 via-gray-800/85 to-gray-900/90"></div>
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="mb-4 px-4 py-2 text-gray-300 hover:text-white font-medium flex items-center gap-2 transition"
           >
-            <option value="druids">Druid</option>
-            <option value="knights">Knight</option>
-            <option value="paladins">Paladin</option>
-            <option value="sorcerers">Sorcerer</option>
-          </select>
-          <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded">
-            Salvar Personagem
+            ← Voltar ao Dashboard
           </button>
-        </form>
-      )}
+          <h1 className="text-4xl font-bold text-white">{character.name}</h1>
+          <p className="text-lg text-gray-300 mt-1">
+            {character.vocation.toUpperCase()} • {character.world}
+          </p>
+        </div>
+
+        {/* Aviso sobre coleta de dados */}
+        <div className="mb-6 p-4 bg-yellow-900/50 border border-yellow-600 rounded-lg">
+          <p className="text-yellow-200 text-sm">
+            <strong>Aviso:</strong> Não coletamos dados históricos anteriores ao cadastro do personagem. Apenas informações a partir do momento de registro são exibidas.
+          </p>
+        </div>
+
+        {/* Dashboard com Gráficos */}
+        <CharacterDashboard character={character} />
+      </div>
     </div>
   );
 }

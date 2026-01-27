@@ -12,7 +12,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!authLoading) {
       if (user) {
-        router.push('/dashboard'); // ✅ Só redireciona a RAIZ (/)
+        router.push('/dashboard'); // ✅ Só afeta a RAIZ (/)
       } else {
         router.push('/login');
       }

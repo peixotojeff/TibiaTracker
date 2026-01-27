@@ -1,61 +1,67 @@
-// src/app/api/characters/[id]/stats/route.ts
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
   const cookieStore = await cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
-  const {{user}} = await supabase.auth.getUser();
+  const { data: userResponse } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!userResponse?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const {  char } = await supabase
+  const { id } = await params;
+
+  const { data: char } = await supabase
     .from('characters')
-    .select('id')
+    .select('id, name')
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('user_id', userResponse.user.id)
     .single();
 
   if (!char) {
     return NextResponse.json({ error: 'Character not found' }, { status: 404 });
   }
 
-  const {  logs } = await supabase
+  // Fetch XP logs for the character
+  const { data: logs, error: logError } = await supabase
     .from('xp_logs')
     .select('date, xp, level')
     .eq('character_id', id)
     .order('date', { ascending: true });
 
-  if (!logs || logs.length === 0) {
-    return NextResponse.json({
-      level_real: 0,
-      xp_total: 0,
-      media_recente: 0,
-      dias_rastreados: 0,
-    });
+  if (logError) {
+    console.error('Error fetching XP logs:', logError);
+    return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
 
+  if (!logs || logs.length === 0) {
+    return NextResponse.json({ error: 'No XP logs found' }, { status: 404 });
+  }
+
+  // Calculate statistics
   const lastLog = logs[logs.length - 1];
-  let media_recente = 0;
+  let dailyAverage = 0;
 
   if (logs.length >= 2) {
-    const recent = logs.slice(-7);
-    const gain = recent[recent.length - 1].xp - recent[0].xp;
-    media_recente = Math.round(gain / (recent.length - 1));
+    const recentLogs = logs.slice(-7);
+    const xpGained = recentLogs[recentLogs.length - 1].xp - recentLogs[0].xp;
+    dailyAverage = Math.round(xpGained / (recentLogs.length - 1));
   }
 
-  return NextResponse.json({
-    level_real: lastLog.level,
-    xp_total: lastLog.xp,
-    media_recente,
-    dias_rastreados: logs.length,
-  });
+  const stats = {
+    name: char.name || 'Unknown',
+    level: lastLog.level,
+    totalXP: lastLog.xp,
+    dailyAverage,
+    daysTracked: logs.length,
+    xpLogs: logs,
+  };
+
+  return NextResponse.json(stats);
 }

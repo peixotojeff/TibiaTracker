@@ -1,25 +1,22 @@
-// src/app/api/characters/[id]/logs/route.ts
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
-  // Verifica se o usuário está logado
-  const {  { user } } = await supabase.auth.getUser();
+  const userResponse = await supabase.auth.getUser();
 
-  if (!user) {
+  if (userResponse.error || !userResponse.data.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const user = userResponse.data.user;
+  const { id } = await params;
+
   // Verifica se o personagem pertence ao usuário
-  const {  char, error: charError } = await supabase
+  const { data: char, error: charError } = await supabase
     .from('characters')
     .select('id, user_id')
     .eq('id', id)
@@ -31,7 +28,7 @@ export async function GET(
   }
 
   // Busca os logs ordenados por data
-  const {  logs, error: logsError } = await supabase
+  const { data: logs, error: logsError } = await supabase
     .from('xp_logs')
     .select('id, character_id, date, level, xp')
     .eq('character_id', id)
@@ -42,5 +39,5 @@ export async function GET(
     return NextResponse.json({ error: 'Failed to fetch logs' }, { status: 500 });
   }
 
-  return NextResponse.json({ logs });
+  return NextResponse.json({ logs: logs || [] });
 }
