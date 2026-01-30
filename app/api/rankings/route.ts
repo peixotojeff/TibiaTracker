@@ -22,7 +22,7 @@ export async function GET() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Fetch all characters
+    // Fetch all characters from all users (for global rankings)
     const { data: characters, error: charError } = await supabase
       .from('characters')
       .select('id, name, world, vocation, user_id');
@@ -40,13 +40,12 @@ export async function GET() {
     const userEmailMap: Record<string, string> = {};
     // For now, set empty email; you may need to create a users table or use auth data
 
-    // Fetch XP logs for the last 7 days for all characters
+    // Fetch ALL XP logs for all characters (needed for proper streak calculation)
     const characterIds = characters.map(char => char.id);
-    const { data: recentLogs, error: logsError } = await supabase
+    const { data: allLogs, error: logsError } = await supabase
       .from('xp_logs')
       .select('character_id, date, xp, level')
       .in('character_id', characterIds)
-      .gte('date', sevenDaysAgo.toISOString().split('T')[0])
       .order('character_id', { ascending: true })
       .order('date', { ascending: true });
 
@@ -57,7 +56,7 @@ export async function GET() {
 
     // Group logs by character
     const logsByCharacter: Record<string, any[]> = {};
-    recentLogs?.forEach(log => {
+    allLogs?.forEach(log => {
       if (!logsByCharacter[log.character_id]) {
         logsByCharacter[log.character_id] = [];
       }
@@ -84,17 +83,39 @@ export async function GET() {
         return;
       }
 
-      // Calculate streak (consecutive days with logs in the last 7 days)
+      // Calculate daily XP gains and moving averages
+      const enrichedLogs = logs.map((log, i) => {
+        if (i === 0) return { ...log, daily_exp: 0 };
+        const prevXp = logs[i - 1].xp;
+        return { ...log, daily_exp: log.xp - prevXp };
+      });
+
+      // Calculate daily XP data with moving averages (same as statistics API)
+      const dailyXPData: { date: string; dailyXP: number; movingAvg30: number }[] = [];
+
+      for (let i = 1; i < enrichedLogs.length; i++) {
+        const currentLog = enrichedLogs[i];
+        const dailyXP = currentLog.daily_exp;
+
+        // Calculate 30-day moving average
+        const start30 = Math.max(0, i - 29);
+        const window30 = enrichedLogs.slice(start30, i + 1);
+        const movingAvg30 = window30.length > 1
+          ? (window30[window30.length - 1].xp - window30[0].xp) / (window30.length - 1)
+          : dailyXP;
+
+        dailyXPData.push({
+          date: currentLog.date,
+          dailyXP,
+          movingAvg30: Math.round(movingAvg30),
+        });
+      }
+
+      // Calculate streak: consecutive days with dailyXP > 30-day moving average (from most recent)
       let streakCount = 0;
-      const today = new Date();
-      const logDates = logs.map(log => new Date(log.date).toDateString());
-
-      for (let i = 0; i < 7; i++) {
-        const checkDate = new Date(today);
-        checkDate.setDate(checkDate.getDate() - i);
-        const dateString = checkDate.toDateString();
-
-        if (logDates.includes(dateString)) {
+      for (let i = dailyXPData.length - 1; i >= 0; i--) {
+        const data = dailyXPData[i];
+        if (data.dailyXP > data.movingAvg30) {
           streakCount++;
         } else {
           break; // Streak broken

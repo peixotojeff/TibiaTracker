@@ -292,7 +292,7 @@ export default function StatisticsPage() {
             <p className="text-3xl font-bold text-white">{stats.length}</p>
           </div>
           <div className="bg-gradient-to-br from-green-900/40 to-green-800/40 border border-green-700 rounded-lg p-6">
-            <p className="text-green-200 text-sm mb-1">Nível Máximo</p>
+            <p className="text-green-200 text-sm mb-1">Nível Atual</p>
             <p className="text-3xl font-bold text-white">
               {Math.max(...stats.map((s) => s.level), 0)}
             </p>
@@ -305,6 +305,7 @@ export default function StatisticsPage() {
               ).toFixed(1)}
               M
             </p>
+            <p className="text-sm text-gray-400 mt-2">XP total acumulada pelo personagens.</p>
           </div>
           <div className="bg-gradient-to-br from-amber-900/40 to-amber-800/40 border border-amber-700 rounded-lg p-6">
             <p className="text-amber-200 text-sm mb-1">Média Diária</p>
@@ -313,6 +314,7 @@ export default function StatisticsPage() {
                 stats.reduce((acc, s) => acc + s.dailyAverage, 0) / (stats.length || 1)
               ).toLocaleString()}
             </p>
+            <p className="text-sm text-gray-400 mt-2">Média Diária da experiência. </p> 
           </div>
           <div className="bg-gradient-to-br from-indigo-900/40 to-indigo-800/40 border border-indigo-700 rounded-lg p-6">
             <p className="text-indigo-200 text-sm mb-1">Data Estimada para +100 Níveis</p>
@@ -321,6 +323,7 @@ export default function StatisticsPage() {
                 ? stats[0].estimatedDateToNext100Levels
                 : 'N/A'}
             </p>
+            <p className="text-sm text-gray-400 mt-2">Data estimada com base na média dos últimos 30 dias.</p>
           </div>
         </div>
 
@@ -329,6 +332,7 @@ export default function StatisticsPage() {
           <div className="bg-gradient-to-br from-red-900/40 to-red-800/40 border border-red-700 rounded-lg p-6">
             <p className="text-red-200 text-sm mb-1">🔥 Streak</p>
             <p className="text-3xl font-bold text-white">{calculatedStats.streak} dias</p>
+            <p className="text-sm text-gray-400 mt-2">Dias consecutivos com desempenho acima da média dos últimos 30 dias.</p>          
           </div>
           <div className="bg-gradient-to-br from-yellow-900/40 to-yellow-800/40 border border-yellow-700 rounded-lg p-6">
             <p className="text-yellow-200 text-sm mb-1">🏆 Melhor Dia</p>
@@ -342,6 +346,7 @@ export default function StatisticsPage() {
           <div className="bg-gradient-to-br from-cyan-900/40 to-cyan-800/40 border border-cyan-700 rounded-lg p-6">
             <p className="text-cyan-200 text-sm mb-1">📅 Consistência</p>
             <p className="text-3xl font-bold text-white">{calculatedStats.consistency}%</p>
+            <p className="text-sm text-gray-400 mt-2">Porcentagem de dias jogadas em relação ao ano. </p> 
           </div>
         </div>
 
@@ -583,7 +588,7 @@ export default function StatisticsPage() {
         {/* Heatmap de Intensidade de Hunts */}
         {stats.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">Intensidade de Hunts (52 Semanas do Ano)</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Intensidade de Hunts</h2>
             <div className="overflow-x-auto">
               <div className="min-w-max">
                 {/* Header with week numbers */}
@@ -643,7 +648,7 @@ export default function StatisticsPage() {
         {/* HISTÓRICO DE MARCOS ATINGIDOS */}
         {stats.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">HISTÓRICO DE MARCOS ATINGIDOS - {selectedChar?.name}</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Histórico de Marcos Atingidos - {selectedChar?.name}</h2>
             <div className="space-y-2">
               {[200, 400, 600, 800, 900, 1000].map(milestone => (
                 <div key={milestone} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-b-0">
@@ -660,7 +665,7 @@ export default function StatisticsPage() {
         {/* ANÁLISE DE CENÁRIOS (ETA) */}
         {etaData.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">ANÁLISE DE CENÁRIOS (ETA) - {selectedChar?.name}</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Análise de Cenários- {selectedChar?.name}</h2>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={etaData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
